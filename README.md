@@ -22,13 +22,8 @@ AstrBot MCSManager 服务器状态查询与管理插件 / A plugin for querying 
 
 1. 将本仓库克隆或下载到 AstrBot 的插件目录：
 data/plugins/astrbot_plugin_mcsm_status/
-
-text
-2. 安装依赖：
 2. 安装依赖：
 pip install -r requirements.txt
-
-text
 3. 在 AstrBot WebUI 的插件管理中加载或重载插件。
 4. 在插件配置页面填写 MCSManager 面板地址和 API Key。
 
