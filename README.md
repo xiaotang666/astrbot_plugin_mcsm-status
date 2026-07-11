@@ -65,14 +65,16 @@ pip install -r requirements.txt
 | `/mcsm restart [名称或序号]` | 重启指定实例（支持序号） |
 | `/mcsm kill [名称或序号]` | 强制终止指定实例（支持序号） |
 | `/mcsm cmd [实例名] <命令>` | 向运行中的实例发送控制台命令 |
-| `/mcsm panel` | 生成并发送状态面板图片 |
+| `/mcsm say <内容>` | 向运行中实例发送 `say` 广播（多实例自动广播） |
+| `/mcsm panel [序号]` | 生成并发送状态面板图片（支持序号筛选单个实例） |
 | `/mcsm help` | 显示帮助信息 |
 
 支持的命令别名：`mcsm` / `mcs`、`status` / `状态` / `s`、`list` / `列表` / `ls` 等中英文别名。
 
 实例匹配支持名称模糊匹配，精确匹配优先。
 
-> 💡 `start` / `stop` / `restart` / `kill` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
+> 💡 `start` / `stop` / `restart` / `kill` / `panel` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
+> 背景图支持本地文件：将图片放入 `backgrounds/` 目录即可自动识别，无需配置 URL。
 
 ## 📂 文件结构
 3. 在 AstrBot WebUI 的插件管理中加载或重载插件。
@@ -116,14 +118,16 @@ pip install -r requirements.txt
 | `/mcsm restart [名称]` | 重启指定实例 |
 | `/mcsm kill [名称]` | 强制终止指定实例 |
 | `/mcsm cmd [实例名] <命令>` | 向运行中的实例发送控制台命令 |
-| `/mcsm panel` | 生成并发送状态面板图片 |
+| `/mcsm say <内容>` | 向运行中实例发送 `say` 广播（多实例自动广播） |
+| `/mcsm panel [序号]` | 生成并发送状态面板图片（支持序号筛选单个实例） |
 | `/mcsm help` | 显示帮助信息 |
 
 支持的命令别名：`mcsm` / `mcs`、`status` / `状态` / `s`、`list` / `列表` / `ls` 等中英文别名。
 
 实例匹配支持名称模糊匹配，精确匹配优先。
 
-> 💡 `start` / `stop` / `restart` / `kill` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
+> 💡 `start` / `stop` / `restart` / `kill` / `panel` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
+> 背景图支持本地文件：将图片放入 `backgrounds/` 目录即可自动识别，无需配置 URL。
 
 ## 📂 文件结构
 astrbot_plugin_mcsm_status/

@@ -41,15 +41,17 @@ HELP_TEXT = """MCSManager 服务器管理
 ─────────────────────
 /mcsm status [名称]       查看状态
 /mcsm list                列出所有实例
-/mcsm start [名称]        启动服务器
-/mcsm stop [名称]         停止服务器
-/mcsm restart [名称]      重启服务器
-/mcsm kill [名称]         强制终止
+/mcsm start [名称/序号]    启动服务器
+/mcsm stop [名称/序号]     停止服务器
+/mcsm restart [名称/序号]  重启服务器
+/mcsm kill [名称/序号]     强制终止
 /mcsm cmd [实例名] <命令>  发送控制台命令
-/mcsm panel               状态面板（图片）
+/mcsm say <内容>          向服务器发送 say 广播
+/mcsm panel [序号]         状态面板（图片）
 /mcsm help                帮助信息
 
-💡 背景图推荐尺寸: 680×400 像素"""
+💡 背景图推荐尺寸: 680×400 像素
+💡 可在 backgrounds/ 目录放入本地背景图"""
 
 BG_CACHE_PREFIX = "bg_cache_"
 
@@ -167,7 +169,7 @@ def _format_uptime(seconds: float) -> str:
     "astrbot-plugin-mcsm-status",
     "xiaotang666",
     "MCSManager 服务器状态查询插件",
-    "1.8.1",
+    "1.9.0",
     "https://github.com/xiaotang666/astrbot-plugin-mcsm-status",
 )
 class McsmStatusPlugin(Star):
@@ -202,7 +204,7 @@ class McsmStatusPlugin(Star):
         _raw_admin = _safe_list(config.get("admin_commands"))
         self.admin_commands: Set[str] = set(
             str(x).strip() for x in _raw_admin if str(x).strip()
-        ) if _raw_admin else {"status", "list", "start", "stop", "restart", "kill", "cmd", "panel", "help"}
+        ) if _raw_admin else {"status", "list", "start", "stop", "restart", "kill", "cmd", "say", "panel", "help"}
 
         _raw_member = _safe_list(config.get("member_commands"))
         self.member_commands: Set[str] = set(
@@ -232,10 +234,12 @@ class McsmStatusPlugin(Star):
         return os.path.join(self._bg_dir, _url_to_cache_name(url))
 
     def _sync_bg_cache(self):
+        """清理过期的 URL 缓存文件，不触碰用户手动放入的本地背景图"""
         if not os.path.isdir(self._bg_dir):
             return
         valid_names = set(_url_to_cache_name(url) for url in self.bg_urls)
         for fname in os.listdir(self._bg_dir):
+            # 只删除 bg_cache_ 前缀的 URL 缓存文件，保留用户本地背景
             if fname.startswith(BG_CACHE_PREFIX) and fname not in valid_names:
                 try:
                     os.remove(os.path.join(self._bg_dir, fname))
@@ -281,15 +285,56 @@ class McsmStatusPlugin(Star):
         except Exception:
             return None
 
-    async def _get_background(self):
-        if not self.bg_urls:
+    def _scan_local_backgrounds(self) -> list:
+        """扫描 backgrounds/ 目录中的用户本地背景图（排除 URL 缓存文件）"""
+        if not os.path.isdir(self._bg_dir):
+            return []
+        exts = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+        local_files = []
+        for fname in sorted(os.listdir(self._bg_dir)):
+            if fname.startswith(BG_CACHE_PREFIX):
+                continue  # 跳过 URL 缓存文件
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in exts:
+                local_files.append(os.path.join(self._bg_dir, fname))
+        return local_files
+
+    def _load_local_image(self, file_path: str):
+        """从本地文件加载图片"""
+        if not HAS_PIL:
             return None
-        url = self.bg_urls[self._bg_index % len(self.bg_urls)]
-        self._bg_index = (self._bg_index + 1) % len(self.bg_urls)
-        if url == self._bg_current_url and self._bg_current_img is not None:
+        try:
+            img = Image.open(file_path)
+            img.load()
+            return img
+        except Exception:
+            return None
+
+    async def _get_background(self):
+        if not HAS_PIL:
+            return None
+        # 优先使用 URL 配置
+        if self.bg_urls:
+            url = self.bg_urls[self._bg_index % len(self.bg_urls)]
+            self._bg_index = (self._bg_index + 1) % len(self.bg_urls)
+            if url == self._bg_current_url and self._bg_current_img is not None:
+                return self._bg_current_img
+            img = await self._load_background(url)
+            self._bg_current_url = url if img else None
+            self._bg_current_img = img
+            return img
+        # 无 URL 时，扫描本地 backgrounds/ 目录
+        local_files = self._scan_local_backgrounds()
+        if not local_files:
+            return None
+        if self._bg_current_url is None:
+            self._bg_index = 0
+        file_path = local_files[self._bg_index % len(local_files)]
+        self._bg_index = (self._bg_index + 1) % len(local_files)
+        if file_path == self._bg_current_url and self._bg_current_img is not None:
             return self._bg_current_img
-        img = await self._load_background(url)
-        self._bg_current_url = url if img else None
+        img = self._load_local_image(file_path)
+        self._bg_current_url = file_path if img else None
         self._bg_current_img = img
         return img
 
@@ -599,10 +644,13 @@ class McsmStatusPlugin(Star):
         command = cmd_text
 
         if len(running) == 1:
+            # 单实例：整个 cmd_text 都是要发送的命令
             d, i, inst, _ = running[0]
             target = (d, i, inst)
         else:
+            # 多实例：尝试将第一个词与实例名匹配
             first_word = cmd_text.split(None, 1)[0]
+            matched = False
             for d, i, inst, dl in running:
                 name = inst.get("config", {}).get("nickname", "")
                 if name and first_word.lower() == name.lower():
@@ -610,13 +658,21 @@ class McsmStatusPlugin(Star):
                     remaining = cmd_text[len(first_word):].strip()
                     if remaining:
                         command = remaining
+                    matched = True
                     break
-                if name and first_word.lower() in name.lower():
-                    target = (d, i, inst)
-                    remaining = cmd_text[len(first_word):].strip()
-                    if remaining:
-                        command = remaining
-            if target is None:
+            # 如果精确匹配失败，尝试模糊匹配
+            if not matched:
+                for d, i, inst, dl in running:
+                    name = inst.get("config", {}).get("nickname", "")
+                    if name and first_word.lower() in name.lower():
+                        target = (d, i, inst)
+                        remaining = cmd_text[len(first_word):].strip()
+                        if remaining:
+                            command = remaining
+                        matched = True
+                        break
+            # 都没匹配到 → 不把第一个词当实例名，整个 cmd_text 就是命令
+            if not matched:
                 names = [m[2].get("config", {}).get("nickname", m[1][:8]) for m in running]
                 yield event.plain_result(
                     "⚠️ 多个实例运行中，请指定实例名:\n"
@@ -634,7 +690,7 @@ class McsmStatusPlugin(Star):
         yield event.plain_result(f"✅ → {name}: {command}")
 
     @filter.command("mcsm panel", alias=["mcsm 面板", "mcsm p", "mcs panel", "mcs 面板", "mcs p"])
-    async def mcsm_panel(self, event: AstrMessageEvent):
+    async def mcsm_panel(self, event: AstrMessageEvent, query: str = ""):
         """状态面板（图片）"""
         err = self._pre_check(event, "panel")
         if err is not None:
@@ -646,11 +702,23 @@ class McsmStatusPlugin(Star):
             yield event.plain_result("❌ 此功能需要 Pillow，请运行: pip install Pillow")
             return
 
+        query = query.strip()
+
         # find_instances 内部会自动调用 overview 并更新节点统计
         matches = await self.api.find_instances()
         if not matches:
             yield event.plain_result("❌ 未找到任何实例")
             return
+
+        # 数字序号支持：panel 1 → 只渲染第 1 个实例
+        if query.isdigit():
+            idx = int(query)
+            if idx < 1 or idx > len(matches):
+                yield event.plain_result(
+                    f"❌ 序号 {idx} 超出范围，当前共 {len(matches)} 个实例（1~{len(matches)}）"
+                )
+                return
+            matches = [matches[idx - 1]]
 
         instances = []
         for d_uuid, i_uuid, inst, d_label in matches:
@@ -716,6 +784,39 @@ class McsmStatusPlugin(Star):
             )
         except Exception as e:
             yield event.plain_result(f"❌ 发送图片失败: {e}")
+
+    @filter.command("mcsm say", alias=["mcsm 喊话", "mcs say", "mcs 喊话"])
+    async def mcsm_say(self, event: AstrMessageEvent, say_text: str = ""):
+        """向运行中的实例发送 say 命令"""
+        err = self._pre_check(event, "cmd")
+        if err is not None:
+            if err:
+                yield event.plain_result(err)
+            return
+
+        say_text = say_text.strip()
+        if not say_text:
+            yield event.plain_result("❌ 用法: /mcsm say <内容>
+示例: /mcsm say 服务器将在5分钟后重启")
+            return
+
+        matches = await self.api.find_instances()
+        running = [(d, i, inst, dl) for d, i, inst, dl in matches if inst.get("status") == 3]
+        if not running:
+            yield event.plain_result("❌ 没有正在运行的实例，请先启动")
+            return
+
+        # 单实例直接发送；多实例依次发送所有运行中的实例
+        sent_names = []
+        for d_uuid, i_uuid, inst, _ in running:
+            name = inst.get("config", {}).get("nickname", i_uuid[:8])
+            await self.api.send_command(d_uuid, i_uuid, f"say {say_text}")
+            sent_names.append(name)
+
+        if len(sent_names) == 1:
+            yield event.plain_result(f"✅ → {sent_names[0]}: say {say_text}")
+        else:
+            yield event.plain_result(f"✅ 已广播至 {len(sent_names)} 个实例: say {say_text}")
 
     # ═══════════════════════════════════════════
     #  实例操作共用逻辑

@@ -33,7 +33,7 @@
         "title": "管理员可用命令",
         "description": "管理员可使用的子命令，可选: status, list, start, stop, restart, kill, cmd, panel, help",
         "type": "list",
-        "default": ["status", "list", "start", "stop", "restart", "kill", "cmd", "panel", "help"]
+        "default": ["status", "list", "start", "stop", "restart", "kill", "cmd", "say", "panel", "help"]
     },
     "member_ids": {
         "title": "普通成员 QQ 号",
@@ -55,7 +55,7 @@
     },
     "background_urls": {
         "title": "面板背景图 URL",
-        "description": "支持多张图片地址，面板渲染时按顺序轮询切换，为空则使用默认深色背景，推荐尺寸 680×400",
+        "description": "支持多张图片地址，面板渲染时按顺序轮询切换，为空则使用默认深色背景，推荐尺寸 680×400。也可直接将图片放入 backgrounds/ 目录，无需配置 URL",
         "type": "list",
         "default": []
     }
