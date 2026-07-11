@@ -60,10 +60,10 @@ pip install -r requirements.txt
 | --- | --- |
 | `/mcsm status [名称]` | 查看指定实例状态，不指定则显示所有实例概览 |
 | `/mcsm list` | 列出所有实例及其状态 |
-| `/mcsm start [名称]` | 启动指定实例 |
-| `/mcsm stop [名称]` | 停止指定实例 |
-| `/mcsm restart [名称]` | 重启指定实例 |
-| `/mcsm kill [名称]` | 强制终止指定实例 |
+| `/mcsm start [名称或序号]` | 启动指定实例（支持序号） |
+| `/mcsm stop [名称或序号]` | 停止指定实例（支持序号） |
+| `/mcsm restart [名称或序号]` | 重启指定实例（支持序号） |
+| `/mcsm kill [名称或序号]` | 强制终止指定实例（支持序号） |
 | `/mcsm cmd [实例名] <命令>` | 向运行中的实例发送控制台命令 |
 | `/mcsm panel` | 生成并发送状态面板图片 |
 | `/mcsm help` | 显示帮助信息 |
@@ -71,6 +71,8 @@ pip install -r requirements.txt
 支持的命令别名：`mcsm` / `mcs`、`status` / `状态` / `s`、`list` / `列表` / `ls` 等中英文别名。
 
 实例匹配支持名称模糊匹配，精确匹配优先。
+
+> 💡 `start` / `stop` / `restart` / `kill` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
 
 ## 📂 文件结构
 3. 在 AstrBot WebUI 的插件管理中加载或重载插件。
@@ -120,6 +122,8 @@ pip install -r requirements.txt
 支持的命令别名：`mcsm` / `mcs`、`status` / `状态` / `s`、`list` / `列表` / `ls` 等中英文别名。
 
 实例匹配支持名称模糊匹配，精确匹配优先。
+
+> 💡 `start` / `stop` / `restart` / `kill` 命令同时支持使用 `list` 输出中的数字序号选取实例，例如 `mcsm start 1`。
 
 ## 📂 文件结构
 astrbot_plugin_mcsm_status/

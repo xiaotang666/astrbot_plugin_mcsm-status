@@ -167,7 +167,7 @@ def _format_uptime(seconds: float) -> str:
     "astrbot-plugin-mcsm-status",
     "xiaotang666",
     "MCSManager 服务器状态查询插件",
-    "1.8.0",
+    "1.8.1",
     "https://github.com/xiaotang666/astrbot-plugin-mcsm-status",
 )
 class McsmStatusPlugin(Star):
@@ -723,6 +723,32 @@ class McsmStatusPlugin(Star):
 
     async def _do_action(self, event, query, action, action_name):
         query = query.strip()
+
+        # ── 数字序号支持：当 query 为纯数字时按 list 序号选取实例 ──
+        if query.isdigit():
+            idx = int(query)
+            all_instances = await self.api.find_instances()
+            if not all_instances:
+                yield event.plain_result("❌ 未找到任何实例，请检查 MCSM 连接配置")
+                return
+            if idx < 1 or idx > len(all_instances):
+                yield event.plain_result(
+                    f"❌ 序号 {idx} 超出范围，当前共 {len(all_instances)} 个实例（1~{len(all_instances)}）"
+                )
+                return
+            d_uuid, i_uuid, inst, _ = all_instances[idx - 1]
+            name = inst.get("config", {}).get("nickname", i_uuid[:8])
+            status = inst.get("status", -1)
+            if action == "open" and status == 3:
+                yield event.plain_result(f"ℹ️ {name} 已在运行中")
+                return
+            if action == "stop" and status == 0:
+                yield event.plain_result(f"ℹ️ {name} 已经停止")
+                return
+            await self.api.operate_instance(d_uuid, i_uuid, action)
+            yield event.plain_result(f"✅ 已发送{action_name}指令: {name}")
+            return
+
         matches = await self.api.find_instances(query)
         if not matches:
             yield event.plain_result(f"❌ 未找到实例: {query or '(未指定)'}")
